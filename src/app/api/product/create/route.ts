@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
 
     const res = await fetch(`${api_productServiceEndpoint}/create`, {
         method: "POST",
+        headers: { "Authorization": `Bearer ${accessToken}` },
+
         //Let browser decide contenttype in headers
         body: formData,
 

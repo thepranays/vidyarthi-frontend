@@ -3,6 +3,7 @@ import Cryptr from "cryptr";
 export function encryptToken(text: string) {
     const secretKey = `${process.env.NEXTAUTH_SECRET}`;
     const crypter = new Cryptr(secretKey);
+
     const encryptedToken = crypter.encrypt(text);
     return encryptedToken;
 }
@@ -10,7 +11,10 @@ export function encryptToken(text: string) {
 
 export function decryptToken(text: string) {
     const secretKey = `${process.env.NEXTAUTH_SECRET}`;
+
     const crypter = new Cryptr(secretKey);
+
     const decryptedToken = crypter.decrypt(text);
+
     return decryptedToken;
 }

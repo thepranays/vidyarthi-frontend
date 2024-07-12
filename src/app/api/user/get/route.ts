@@ -1,14 +1,16 @@
 import { api_userServiceEndpoint } from "@/constants/api_endpoints";
+import { getAccessToken } from "@/utils/SessionTokenAccessor";
 
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const uid = searchParams.get("uid");
+    const accessToken = await getAccessToken();
     try {
         const userData = await fetch(`${api_userServiceEndpoint}/get/${uid}`, {
             method: "GET",
-
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
 
 
         });

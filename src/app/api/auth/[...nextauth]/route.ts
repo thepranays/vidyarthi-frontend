@@ -1,7 +1,7 @@
 import NextAuth, { Session, Account, DefaultSession, User } from "next-auth"
 import Keycloak from "next-auth/providers/keycloak"
 
-import { JWT } from "next-auth/jwt"
+
 import { jwtDecode } from "jwt-decode";
 import { encryptToken } from "../../../../utils/Encryption";
 import { refreshTokenError } from "@/constants/constants";
@@ -81,21 +81,24 @@ export const authOptions = {
 
 
             }
-
+            //console.log(token.access_token);
             //if access-token hasn't expired yet
             return token
         },
 
         //called whenever session is requested either from server or client component
         //session data is kept not encrypted 
-        async session({ session, token, user }: { session: any, token: any, user: any }) {
+        async session({ session, token, user }: { session: Session, token: any, user: any }) {
 
-            //send properties to client (eg browser) without any encryption ,DO NOT STORE ACCESS TOKEN DIRECTLY WITHOUT ENCRYPTING
-            session.access_token = encryptToken(token.access_token);
-            session.expires_at = token.expires_at;
-            session.id_token = encryptToken(token.id_token);
+            //send properties to clienst (eg browser) without any encryption ,DO NOT STORE ACCESS TOKEN DIRECTLY WITHOUT ENCRYPTING
+
+            session.accessToken = encryptToken(token.access_token); //TODO:fix issue of decrypting when sending through websocket in chat room 
+
+            session.expiresAt = token.expires_at;
+            session.idToken = encryptToken(token.id_token);
             session.roles = token.decoded.realm_access.roles;
             session.error = token.error;
+
             session.user = {
                 uid: token.decoded.sub,
                 first_name: token.decoded.given_name,
@@ -104,9 +107,12 @@ export const authOptions = {
                 study_year: token.decoded.study_year,
                 email: token.decoded.email,
                 username: token.decoded.preferred_username,
+                profile_img_url: "",
+                created_at: "",
+                last_seen: "",
                 //TODO:add created_at attribute
             }
-            session.uid = token.decoded.sub;
+
             return session;
         }
     }

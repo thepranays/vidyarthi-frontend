@@ -12,6 +12,7 @@
     "@stomp/stompjs": "^7.0.0",
     "crypter": "^0.2.2",
     "cryptr": "^6.3.0",
+    "eventsource": "^2.0.2",
     "flowbite": "^2.3.0",
     "flowbite-react": "^0.10.1",
     "jwt-decode": "^4.0.0",

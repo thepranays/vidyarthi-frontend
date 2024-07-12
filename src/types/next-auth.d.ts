@@ -3,8 +3,10 @@ import { JWT } from "next-auth/jwt"
 
 declare module "next-auth" {
     interface Session {
-        accessToken?: Account.accessToken,
+        accessToken?: string,
+        idToken: string,
         error?: string,
+        roles: [],
         user?: {
             uid: string
             username: string
@@ -18,6 +20,9 @@ declare module "next-auth" {
             last_seen: string
 
         },
+
+        expiresAt?: string,
+
     }
 }
 

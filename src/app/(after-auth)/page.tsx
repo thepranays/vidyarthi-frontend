@@ -11,8 +11,9 @@
 
 'use client'
 import '@/app/globals.css';
-import { getAccessToken } from '@/utils/SessionTokenAccessor';
-import { Suspense, useEffect, useRef } from 'react';
+import NotificationToast from '@/components/toast/NotificationToast';
+
+import { useEffect, useRef, useState } from 'react';
 
 
 
@@ -21,6 +22,8 @@ import { Suspense, useEffect, useRef } from 'react';
 export default function Home() {
   const productCreatedSSE = useRef<EventSource>();
   const reconnectInterval = useRef<NodeJS.Timeout>();
+  const [showNotificationToast, setShowNotificationToast] = useState(false);
+  const notificationToastData = useRef("");
 
   const connectSSE = () => {
     if (productCreatedSSE.current && productCreatedSSE.current.OPEN == 1) {
@@ -35,15 +38,17 @@ export default function Home() {
 
     productCreatedSSE.current.onerror = (error) => {
       console.log("ProductCreated SSE connection error:", error);
+      clearInterval(reconnectInterval.current); //end and clear interval, to start new interval in order to avoid connection not being made after error 
       if (productCreatedSSE.current) {
         productCreatedSSE.current.close();
       }
-      if (!reconnectInterval.current) //if interval is not settedup up previously then only create/set a new interval, to avoid multiple intervals running in program
-        reconnectInterval.current = setInterval(connectSSE, 5000); // Try to reconnect every 5 seconds when an error occurs, done to avoid disconnection of client due to inactivity from sse emitter
+      reconnectInterval.current = setInterval(connectSSE, 5000); // Try to reconnect every 5 seconds when an error occurs, done to avoid disconnection of client due to inactivity from sse emitter
     };
 
     productCreatedSSE.current.addEventListener("event-product-created", (event) => {
-      console.log("Received event:", event);
+      //console.log("Received event:", event);
+      notificationToastData.current = event.data; //set notification toast message
+      setShowNotificationToast(true); //display notification toast
     });
   };
 
@@ -59,12 +64,13 @@ export default function Home() {
       }
     };
   }, []);
-  return
-  <div>
+  return (<div>
+    <button onClick={() => setShowNotificationToast(true)}>hiii</button>
+    <div className='fixed right-10 bottom-10'>
+      <NotificationToast show={showNotificationToast} setShow={setShowNotificationToast} data={notificationToastData.current} />
+    </div>
 
-    {/* <h1>{productCreatedNotification}</h1> */}
-
-  </div>
+  </div>);
 
 }
 

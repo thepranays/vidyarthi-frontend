@@ -5,13 +5,16 @@ import { NextResponse } from "next/server";
 
 //Get all products from db
 export async function GET() {
-    const accessToken = await getAccessToken();
+    //const accessToken = await getAccessToken(); not required as free to visit route
     const res = await fetch(`${api_productServiceEndpoint}/get/all`, {
-        method: "GET", next: { revalidate: 5 }
-        , headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
-    }); //revalidate to get latest product list from db [every 60 seconds]
+        method: "GET", cache: "no-store" //dont store in cache always make new request to fetch fresh data
+        , headers: { "Content-Type": "application/json" },
+    });
     const data = await res.json();
-    // console.log(data);
+
+    if (res.status >= 500) { //if server side error then return empty list of products
+        return new NextResponse(JSON.stringify({ data: [] }), { status: res.status });
+    }
     return new NextResponse(JSON.stringify({ data: data }), { status: res.status });
 
 }

@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const accessToken = await getAccessToken();
     try {
         const userData = await fetch(`${api_userServiceEndpoint}/get/${uid}`, {
-            method: "GET",
+            method: "GET", next: { revalidate: 30 },//revalidate very 30 sec
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
 
 

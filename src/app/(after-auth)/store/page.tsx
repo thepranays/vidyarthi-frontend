@@ -11,10 +11,9 @@ export default async function Store(params: { categoryFilterList: string[] }) {
     //Fetch all products
     const reqProducts = await fetch("http:localhost:3000/api/product/get/all", {
         method: "GET", headers: { "Content-Type": "application/json" },
-        next: { revalidate: 1 } //revalidate to get latest product list from db, [every 1 seconds]
+        cache: "no-store" //dont 
     });
-    const products = (await reqProducts.json()).data; //format : { data:[{},{}.. ] }
-
+    const products: Product[] = (await reqProducts.json()).data; //format : { data:[{},{}.. ] }
 
 
     //Component

@@ -13,8 +13,7 @@ export default async function ProductDetailsPage({ params }: { params: { product
     // console.log(productData);
     const productUserReq = await fetch(`http://localhost:3000/api/user/get?uid=${productData.uid}`, { method: "GET" });
     const productUserData = (await productUserReq.json()).user;
-    const decodedAccessToken = jwtDecode(await getAccessToken() ?? "");
-    const uid = decodedAccessToken.sub ?? "";
+
     // console.log(productData);
     //used suspense for html streaming
     return <Suspense fallback={<div>Loading</div>}>
@@ -38,7 +37,7 @@ export default async function ProductDetailsPage({ params }: { params: { product
                 <h1 className="mb-2 text-5xl font-bold tracking-tight text-gray-900 dark:text-white">{productData.title}</h1>
                 <h5 className="mb-2 text-1xl font-bold tracking-tight text-gray-900 dark:text-gray-300">{productData.description}</h5>
                 <h5 className="mb-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white"> ₹ {productData.price}</h5>
-                <ContactNow uid={uid} product={productData} productUser={productUserData}></ContactNow>
+                <ContactNow product={productData} productUser={productUserData}></ContactNow>
             </div>
 
         </div>

@@ -34,12 +34,15 @@ export default function Home() {
     productCreatedSSE.current.onopen = () => {
       console.log("ProductCreated SSE connection opened");
       clearInterval(reconnectInterval.current); //end and clear the interval when connection opens
+
     };
 
     productCreatedSSE.current.onerror = (error) => {
       console.log("ProductCreated SSE connection error:", error);
-      clearInterval(reconnectInterval.current); //end and clear interval, to start new interval in order to avoid connection not being made after error 
-      if (productCreatedSSE.current) {
+
+      //clearInterval(reconnectInterval.current); //end and clear interval, to start new interval in order to avoid connection not being made after error 
+
+      if (productCreatedSSE.current) { //close current connection that being and try again
         productCreatedSSE.current.close();
       }
       reconnectInterval.current = setInterval(connectSSE, 5000); // Try to reconnect every 5 seconds when an error occurs, done to avoid disconnection of client due to inactivity from sse emitter
@@ -55,7 +58,7 @@ export default function Home() {
   useEffect(() => {
     connectSSE();
 
-    return () => {
+    return () => { //when unmounting component, cleanup function
       if (productCreatedSSE.current) {
         productCreatedSSE.current.close();
       }
@@ -65,7 +68,7 @@ export default function Home() {
     };
   }, []);
   return (<div>
-    <button onClick={() => setShowNotificationToast(true)}>hiii</button>
+
     <div className='fixed right-10 bottom-10'>
       <NotificationToast show={showNotificationToast} setShow={setShowNotificationToast} data={notificationToastData.current} />
     </div>

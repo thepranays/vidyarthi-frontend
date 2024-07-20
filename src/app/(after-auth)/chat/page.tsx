@@ -172,6 +172,10 @@ export default function Chat() {
     //user selling conversation_id to its Conversation room map
     const [sellConvoRoomsMap, setSellConvoRoomsMap] = useState(new Map<String, ConversationRoom>()) //convo_Id->{convo,msgs[]} mapping
 
+    //reference to avoid losing reference to buy and sell convo maps when setstate is used
+    const buyConvoRoomsMapRef = useRef(buyConvoRoomsMap);
+    const sellConvoRoomsMapRef = useRef(sellConvoRoomsMap);
+
     //For session management and session data
     const { data: session, status } = useSession();
     //For message to be sent
@@ -217,45 +221,43 @@ export default function Chat() {
                 //Get Conversation data and product belonging to it from db using msgReceivedOnConvo_id
                 // const { convoWithRecipient, product } = (await getConversationByConvoIdWithRecipientAndProduct(convoIdOfMsgRecv));
                 const convoWithRecipient = (await getConversationByConvoIdWithRecipient(convoIdOfMsgRecv, currUserId));
-                if (convoWithRecipient.buyer_uid == currUserId) {
-                    if (!buyConvoRoomsMap.has(convoIdOfMsgRecv)) {
+
+                if (convoWithRecipient.buyer_uid == currUserId) { //if user is buyer
+
+                    //create new conversation room with fetched data from db, [first message received for this conversation]
+                    //if this message conversation already existed then use it         
+                    const convoRoomOfReceivedMsg = buyConvoRoomsMapRef.current.get(recvMessage.convo_id) ?? new ConversationRoom(convoWithRecipient, []);
 
 
+                    //add newly received message to that buy convoroom;
+                    convoRoomOfReceivedMsg.msgs.push(recvMessage);
 
-                        //create new conversation room with fetched conversation data and messages
-                        const newBuyConvoRoom = new ConversationRoom(convoWithRecipient, []);
-                        //add newly received message to that buy convoroom;
-                        newBuyConvoRoom.msgs.push(recvMessage);
+                    //when current user receives new messsage update last message in conversation tile
+                    convoRoomOfReceivedMsg.convo.lastMsg = msgObj.msg;
+                    convoRoomOfReceivedMsg.convo.lastMsg_uid = msgObj.sender_uid;
 
-                        //when current user receives new messsage update last message in conversation tile
-                        newBuyConvoRoom.convo.lastMsg = msgObj.msg;
-                        newBuyConvoRoom.convo.lastMsg_uid = msgObj.sender_uid;
+                    //add changes conversation to buy convo rooms map , if conversation didnt exist before then it will be created newly by set
+                    buyConvoRoomsMapRef.current.set(convoIdOfMsgRecv, convoRoomOfReceivedMsg);
+                    setBuyConvoRoomsMap(new Map(buyConvoRoomsMapRef.current));
 
-                        //add new conversation to buy convo rooms map
-                        buyConvoRoomsMap.set(convoIdOfMsgRecv, newBuyConvoRoom);
-                        setBuyConvoRoomsMap(new Map(buyConvoRoomsMap));
-                    }
+                } else { //if user is seller
+                    //create new conversation room with fetched data from db, [first message received for this conversation]
+                    //if this message conversation already existed then use it         
+                    const convoRoomOfReceivedMsg = sellConvoRoomsMapRef.current.get(recvMessage.convo_id) ?? new ConversationRoom(convoWithRecipient, []);
 
+                    //add newly received message to that buy convoroom;
+                    convoRoomOfReceivedMsg.msgs.push(recvMessage);
 
+                    //when current user receives new messsage update last message in conversation tile
+                    convoRoomOfReceivedMsg.convo.lastMsg = msgObj.msg;
+                    convoRoomOfReceivedMsg.convo.lastMsg_uid = msgObj.sender_uid;
 
-                } else {
-                    if (!sellConvoRoomsMap.has(convoIdOfMsgRecv)) {
-
-                        //create new conversation room with fetched conversation data and messages
-                        const newSellConvoRoom = new ConversationRoom(convoWithRecipient, []);
-                        //add newly received message to that buy convoroom;
-                        newSellConvoRoom.msgs.push(recvMessage);
-
-                        //when current user receives new messsage update last message in conversation tile
-                        newSellConvoRoom.convo.lastMsg = msgObj.msg;
-                        newSellConvoRoom.convo.lastMsg_uid = msgObj.sender_uid;
-
-                        //add new conversation to sell convo rooms map
-                        sellConvoRoomsMap.set(convoIdOfMsgRecv, newSellConvoRoom);
-                        setSellConvoRoomsMap(new Map(sellConvoRoomsMap));
-                    }
-
+                    //add changes conversation to sell convo rooms map , if conversation didnt exist before then it will be created newly by set
+                    sellConvoRoomsMapRef.current.set(convoIdOfMsgRecv, convoRoomOfReceivedMsg);
+                    setSellConvoRoomsMap(new Map(sellConvoRoomsMapRef.current));
                 }
+
+
 
 
 
@@ -340,9 +342,17 @@ export default function Chat() {
         return () => { if (stompClient.current.connected) { stompClient.current.unsubscribe(msgQueue); } }
     }, [session, status, stompClient.current.connected]);
 
+    useEffect(() => {
+        //Set (buy/sell)ConvoRoomMapReference to changed (buy/sell)ConvoRoomMap 
+        buyConvoRoomsMapRef.current = buyConvoRoomsMap;
+        sellConvoRoomsMapRef.current = sellConvoRoomsMap;
+    }, [buyConvoRoomsMap, sellConvoRoomsMap]);
+
     //execute following api calls on first render/mounting:[getBuyConversationList,getSellConversationList along with recipients user's data corresponding to each conversation]
     useEffect(() => {
         if (status != "loading" && session && session.user && session.user.uid) {
+
+
             const apiCalls = async (uid: string) => {
                 //Fetch user's buying and selling conversations list with recipient user data and messages as map
                 const resBuy = await getBuyConversationRoomsMap(uid);

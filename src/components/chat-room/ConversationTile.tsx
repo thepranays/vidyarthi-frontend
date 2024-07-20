@@ -17,8 +17,8 @@ export default function ChatTile(props: { conv: Conversation }) {
                         <p className="text-sm font-medium text-gray-900 truncate dark:text-white">
                             {props.conv.recipient_user.first_name} {props.conv.recipient_user.last_name}
                         </p>
-                        <p className="text-sm text-gray-500 truncate dark:text-gray-400">
-                            Last Message
+                        <p className="text-start text-sm text-gray-500 truncate dark:text-gray-400">
+                            {props.conv.lastMsg}
                         </p>
                     </div>
 

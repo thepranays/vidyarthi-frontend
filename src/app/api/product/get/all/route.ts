@@ -9,6 +9,10 @@ export async function GET() {
     const res = await fetch(`${api_productServiceEndpoint}/get/all`, {
         method: "GET", cache: "no-store" //dont store in cache always make new request to fetch fresh data
         , headers: { "Content-Type": "application/json" },
+    }).catch((e) => {
+        //If backend down or any network issue connecting with backend then return empty list of products
+        return new NextResponse(JSON.stringify({ data: [] }), { status: 500 });
+
     });
     const data = await res.json();
 

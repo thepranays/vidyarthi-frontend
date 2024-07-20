@@ -1,6 +1,6 @@
 'use client'
 
-import { PRODUCT_TYPE_REQUEST, PRODUCT_TYPE_SELLING } from "@/constants/constants";
+import { PRODUCT_CATEGORY_LIST, PRODUCT_TYPE_REQUEST, PRODUCT_TYPE_SELL } from "@/constants/constants";
 import { useState } from "react";
 
 //Create new product listing in db
@@ -31,15 +31,15 @@ export default function SellItem() {
     const [isSelling, setIsSelling] = useState(true);// true-selling , false-requesting 
     const [form, setForm] =
         useState<{ title: string, description: string, price: string, category: string, product_img?: File, type: string }>
-            ({ title: "", description: "", price: "", category: "", type: isSelling ? PRODUCT_TYPE_SELLING : PRODUCT_TYPE_REQUEST });
+            ({ title: "", description: "", price: "", category: "", type: isSelling ? PRODUCT_TYPE_SELL : PRODUCT_TYPE_REQUEST });
 
     return <div className="flex w-full flex-col justify-center items-center">
 
         <h1 className=" text-5xl font-bold tracking-tight text-gray-900 dark:text-white">Create {isSelling ? "Sell" : "Request"} Post</h1>
         <div className="flex flex-row mt-5 ">
-            <button onClick={() => { setIsSelling(true); setForm({ ...form, type: isSelling ? PRODUCT_TYPE_SELLING : PRODUCT_TYPE_REQUEST }); }}><div className={`rounded-l-lg flex items-center justify-center  ${isSelling ? "dark:bg-indigo-700" : "dark:border dark:border-indigo-900"} w-44 h-16 dark:hover:bg-indigo-900`}>Sell</div></button>
+            <button onClick={() => { setIsSelling(true); setForm({ ...form, type: isSelling ? PRODUCT_TYPE_SELL : PRODUCT_TYPE_REQUEST }); }}><div className={`rounded-l-lg flex items-center justify-center  ${isSelling ? "dark:bg-indigo-700" : "dark:border dark:border-indigo-900"} w-44 h-16 dark:hover:bg-indigo-900`}>Sell</div></button>
 
-            <button onClick={() => { setIsSelling(false); setForm({ ...form, type: isSelling ? PRODUCT_TYPE_SELLING : PRODUCT_TYPE_REQUEST }); }}><div className={`rounded-r-lg flex items-center justify-center shadow-md w-44 h-16 ${isSelling ? "dark:border dark:border-indigo-900" : "dark:bg-indigo-700"} dark:hover:bg-indigo-900`}>Request</div></button>
+            <button onClick={() => { setIsSelling(false); setForm({ ...form, type: isSelling ? PRODUCT_TYPE_SELL : PRODUCT_TYPE_REQUEST }); }}><div className={`rounded-r-lg flex items-center justify-center shadow-md w-44 h-16 ${isSelling ? "dark:border dark:border-indigo-900" : "dark:bg-indigo-700"} dark:hover:bg-indigo-900`}>Request</div></button>
         </div>
         <div className="mt-10 w-1/4">
             <label htmlFor="product-title"
@@ -71,11 +71,11 @@ export default function SellItem() {
             <label htmlFor="product-category" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Category</label>
             <select onChange={(e) => { setForm({ ...form, category: e.target.value }) }} id="product-category" className="bg-black border border-indigo-900 text-white text-sm rounded-lg focus:ring-indigo-900 focus:border-indigo-900 block w-full p-2.5 ">
                 <option defaultValue="">Select Category</option>
-                <option defaultValue="books">Books</option>
-                <option defaultValue="notes">Notes</option>
-                <option defaultValue="academic_tools">Academic Tools</option>
-                <option defaultValue="digital_devices">Digital Devices</option>
-                <option defaultValue="others">Others</option>
+                {PRODUCT_CATEGORY_LIST.map((category) => {
+                    return (<option defaultValue={category}>{category}</option>);
+                })}
+
+
             </select>
             <label htmlFor="product-title"
                 className="mt-5 block text-sm font-medium text-indigo-900 dark:text-white hover:text-10">Add a photo</label>

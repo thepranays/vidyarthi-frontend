@@ -10,7 +10,8 @@ export default function MessageTile(props: { msg: Message, conv: Conversation, u
 
             {
                 //To classify b/w receiver and sender
-                props.msg.sender_uid == props.conv.recipient_user.uid ? incMsg(props.msg, props.conv.recipient_user) : outMsg(props.msg, props.user)
+                //If sender id is equal to current user id then its outgoing  message
+                props.msg.sender_uid == props.user.uid ? outMsg(props.msg, props.user) : incMsg(props.msg, props.conv.recipient_user)
             }
         </div>
 

@@ -1,5 +1,5 @@
 'use client';
-import ChatTile from "@/components/chat-room/ChatTile";
+import ConversationTile from "@/components/chat-room/ConversationTile";
 import { useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useSession } from "next-auth/react";
@@ -11,9 +11,10 @@ import { Message } from "@/app/models/Message";
 import { User } from "@/app/models/User";
 import { ConversationRoom } from "@/app/models/ConversationRoom";
 import ConversationModeToggle from "@/components/chat-room/ConversationModeToggle";
+import { PRODUCT_TYPE_SELL } from "@/constants/constants";
 
 //Get conversion using convo_id;
-const getConversationByConvoIdWithUser = async (convo_id: string, isBuying: boolean) => {
+const getConversationByConvoIdWithRecipient = async (convo_id: string, currUserUid: string) => {
     //Fetch Conversation by convo id from db
     const conversation = await fetch(`/api/conversation/get?convo_id=${convo_id}`, {
         method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store"
@@ -23,18 +24,22 @@ const getConversationByConvoIdWithUser = async (convo_id: string, isBuying: bool
     const convoData = (await conversation.json()).data;  //{data:{Conversation}}s
     // console.log(convData);
 
+    // const productReq = await fetch(`/api/product/get?product_id=${convoData.product_id}`, { method: "GET" });
+    // const product = await (productReq.json());
+
     //Fetch conversation recipient's user data (if current user is buyer then recipient is seller else opposite of this)
-    const res = await fetch(`/api/user/get?uid=${isBuying ? convoData.seller_uid : convoData.buyer_uid}`, { method: "GET", cache: "no-store" });
+    const res = await fetch(`/api/user/get?uid=${currUserUid == convoData.buyer_uid ? convoData.seller_uid : convoData.buyer_uid}`, { method: "GET", cache: "no-store" });
     const recipientUser = (await res.json()).user;
-    const convoWithuser = new Conversation(convoData.convo_id, convoData.buyer_uid, convoData.seller_uid, convoData.lastMsg,
+    const convoWithRecipient = new Conversation(convoData.convo_id, convoData.buyer_uid, convoData.seller_uid, convoData.lastMsg,
         recipientUser, convoData.lastMsg_uid, convoData.product_id, convoData.createdAt);
 
-    return convoWithuser;
+    // return { convoWithRecipient, product };
+    return convoWithRecipient;
 
 }
 
 //Get Conversation using buyer_uid,seller_uid,product_id
-const getConversationWithUser = async (buyer_uid: string, seller_uid: string, product_id: string, isBuying: boolean) => {
+const getConversationWithRecipient = async (buyer_uid: string, seller_uid: string, product_id: string, isBuying: boolean) => {
     //Fetch Conversation from db
     const conversation = await fetch(`/api/conversation/get?product_id=${product_id}&buyer_uid=${buyer_uid}&seller_uid=${seller_uid}`, {
         method: "GET", headers: { "Content-Type": "application/json" }, cache: "no-store"
@@ -46,10 +51,10 @@ const getConversationWithUser = async (buyer_uid: string, seller_uid: string, pr
     //Fetch conversation recipient's user data (if current user is buyer then recipient is seller else opposite of this)
     const res = await fetch(`/api/user/get?uid=${isBuying ? seller_uid : buyer_uid}`, { method: "GET", cache: "no-store" });
     const recipientUser = (await res.json()).user;
-    const convoWithuser = new Conversation(convData.convo_id, convData.buyer_uid, convData.seller_uid, convData.lastMsg,
+    const convoWithRecipient = new Conversation(convData.convo_id, convData.buyer_uid, convData.seller_uid, convData.lastMsg,
         recipientUser, convData.lastMsg_uid, convData.product_id, convData.createdAt);
     //console.log(convoWithuser);
-    return convoWithuser;
+    return convoWithRecipient;
 
 }
 
@@ -64,7 +69,7 @@ const createAndGetConversation = async (buyer_uid: string, seller_uid: string, p
     //console.log(convCreateRes.status);
     if (convCreateRes.status === 201) { // conversation created successfully
         //Get newly created conversation from db
-        return await getConversationWithUser(buyer_uid, seller_uid, product_id, isBuying);
+        return await getConversationWithRecipient(buyer_uid, seller_uid, product_id, isBuying);
     }
 
 }
@@ -80,7 +85,7 @@ const getBuyConversationRoomsMap = async (uid: string): Promise<Map<String, Conv
 
     //If buying conversations list from db is found
     //then Fetch each conversation's recipient user's data and store for further use in conversation object
-    const buyConvoListWithUser = await Promise.all(
+    const buyConvoListWithRecipient = await Promise.all(
 
         buyConvList.map(async (convo: any) => {
             const res = await fetch(`/api/user/get?uid=${convo.seller_uid}`, { method: "GET", cache: "no-store" });
@@ -89,14 +94,21 @@ const getBuyConversationRoomsMap = async (uid: string): Promise<Map<String, Conv
             return conv;
         })
     );
-    //TODO:Fetch messages belonging to each conversation from db
+    //Fetch messages belonging to each sell conversation from db
+    const buyConvoListWithRecipientAndMessages = await Promise.all(
+
+        buyConvoListWithRecipient.map(async (convo: Conversation) => {
+            const res = await fetch(`/api/chat/message/get?convo_id=${convo.convo_id}`, { method: "GET", cache: "no-store" });
+            const messages = (await res.json()).messages;
+            return { conversation: { ...convo }, messages };
+        })
+    );
 
     //Create map of convo_id->ConversationRoom
     const buyConvoRoomsMap = new Map<String, ConversationRoom>();
-    buyConvoListWithUser.forEach((convo: Conversation) => buyConvoRoomsMap.set(convo.convo_id, new ConversationRoom(convo, [])));
-    //console.log(buyConvoRoomsMap);
+    buyConvoListWithRecipientAndMessages.forEach((convo: any) => buyConvoRoomsMap.set(convo.conversation.convo_id, new ConversationRoom(convo.conversation, convo.messages)));
+    //console.log(sellConvoRoomsMap);
     return buyConvoRoomsMap;
-
 }
 
 //Get conversations of current user where current user is seller along with buying user'data (recipient for current user)
@@ -111,19 +123,27 @@ const getSellConversationRoomsMap = async (uid: string): Promise<Map<String, Con
 
     //If selling conversations list from db is found
     //then Fetch each conversation's recipient user's data and store for further use in conversation object
-    const sellConvoListWithUser = await Promise.all(
-        sellConvList.map(async (convo: any) => {
+    const sellConvoListWithRecipient = await Promise.all(
+        sellConvList.map(async (convo: Conversation) => {
             const res = await fetch(`/api/user/get?uid=${convo.buyer_uid}`, { method: "GET", cache: "no-store" });
             const recipientUser = (await res.json()).user;
             const conv = new Conversation(convo.convo_id, convo.buyer_uid, convo.seller_uid, convo.lastMsg, recipientUser, convo.lastMsg_uid, convo.product_id, convo.createdAt);
             return conv;
         })
     );
-    //TODO:Fetch messages belonging to each conversation from db
+    //Fetch messages belonging to each sell conversation from db
+    const sellConvoListWithRecipientAndMessages = await Promise.all(
+
+        sellConvoListWithRecipient.map(async (convo: Conversation) => {
+            const res = await fetch(`/api/chat/message/get?convo_id=${convo.convo_id}`, { method: "GET", cache: "no-store" });
+            const messages = (await res.json()).messages;
+            return { conversation: { ...convo }, messages };
+        })
+    )
 
     //Create map of convo_id->ConversationRoom
     const sellConvoRoomsMap = new Map<String, ConversationRoom>();
-    sellConvoListWithUser.forEach((convo: Conversation) => sellConvoRoomsMap.set(convo.convo_id, new ConversationRoom(convo, [])));
+    sellConvoListWithRecipientAndMessages.forEach((convo: any) => sellConvoRoomsMap.set(convo.conversation.convo_id, new ConversationRoom(convo.conversation, convo.messages)));
     //console.log(sellConvoRoomsMap);
     return sellConvoRoomsMap;
 
@@ -161,13 +181,13 @@ export default function Chat() {
 
     //if current user redirected from listed product for sell then user is buying 
     //else if redirected from requested product screen then user is selling
-    const [isBuying, setIsBuying] = useState(searchParams.get("type") == "sell");
+    const [isBuying, setIsBuying] = useState(searchParams.get("type") == null ? true : searchParams.get("type") == PRODUCT_TYPE_SELL);
 
 
 
 
     //OnConncted to chat-websocket on backend , subscribe to current user's message queue    
-    const subscribeToMyMessageQueue = (msgQueue: string) => {
+    const subscribeToMyMessageQueue = (msgQueue: string, currUserId: string) => {
 
         //Connect to chat-websocket on backend
         stompClient.current.onConnect = (frame) => {
@@ -176,37 +196,62 @@ export default function Chat() {
             stompClient.current.subscribe(msgQueue, async (msg) => {
 
                 const msgObj = JSON.parse(msg.body);
-                const msgReceivedOnConvo_id = msgObj.convo_id;
+                const convoIdOfMsgRecv = msgObj.convo_id;
+                const recvMessage = new Message(msgObj.msg_id, msgObj.convo_id, msgObj.msg, msgObj.sender_uid, msgObj.recipient_uid, msgObj.createdAt);
                 //console.log(msgObj);
 
                 // console.log(msgObj.convo_id, " ", conversationRoomRef.current.convo.convo_id);
 
                 //If msg belongs to current opened conversation then add received message to its message list and update UI using setState
                 if (msgObj.convo_id == conversationRoomRef.current.convo.convo_id) {
-                    conversationRoomRef.current.msgs.push(new Message(msgObj.msg_id, msgObj.convo_id, msgObj.msg, msgObj.sender_uid, msgObj.recipient_uid, msgObj.createdAt));
+                    conversationRoomRef.current.msgs.push(recvMessage);
+
+                    //when current user receives new messsage update last message in conversation tile
+                    conversationRoomRef.current.convo.lastMsg = msgObj.msg;
+                    conversationRoomRef.current.convo.lastMsg_uid = msgObj.sender_uid;
                     setConversationRoom({ ...conversationRoomRef.current });
                     // return;
                 }
-                //If received message's conversation doesn't exist in conversation-room map,then fetch the conversation details and add it.
-                if (isBuying) {
-                    if (!buyConvoRoomsMap.has(msgReceivedOnConvo_id)) {
-                        //Get Conversation data from db using msgReceivedOnConvo_id
-                        const fetchedConvo = await getConversationByConvoIdWithUser(msgReceivedOnConvo_id, isBuying);
-                        //add to buy convo rooms
-                        buyConvoRoomsMap.set(msgReceivedOnConvo_id, new ConversationRoom(fetchedConvo, []));
 
-                        buyConvoRoomsMap.get(msgReceivedOnConvo_id)?.msgs.push(new Message(msgObj.msg_id, msgObj.convo_id, msgObj.msg, msgObj.sender_uid, msgObj.recipient_uid, msgObj.createdAt));
+                //If received message's conversation doesn't exist in conversation-room map locally,then fetch the conversation details and add it.
+                //Get Conversation data and product belonging to it from db using msgReceivedOnConvo_id
+                // const { convoWithRecipient, product } = (await getConversationByConvoIdWithRecipientAndProduct(convoIdOfMsgRecv));
+                const convoWithRecipient = (await getConversationByConvoIdWithRecipient(convoIdOfMsgRecv, currUserId));
+                if (convoWithRecipient.buyer_uid == currUserId) {
+                    if (!buyConvoRoomsMap.has(convoIdOfMsgRecv)) {
+
+
+
+                        //create new conversation room with fetched conversation data and messages
+                        const newBuyConvoRoom = new ConversationRoom(convoWithRecipient, []);
+                        //add newly received message to that buy convoroom;
+                        newBuyConvoRoom.msgs.push(recvMessage);
+
+                        //when current user receives new messsage update last message in conversation tile
+                        newBuyConvoRoom.convo.lastMsg = msgObj.msg;
+                        newBuyConvoRoom.convo.lastMsg_uid = msgObj.sender_uid;
+
+                        //add new conversation to buy convo rooms map
+                        buyConvoRoomsMap.set(convoIdOfMsgRecv, newBuyConvoRoom);
                         setBuyConvoRoomsMap(new Map(buyConvoRoomsMap));
                     }
 
 
 
                 } else {
-                    if (!sellConvoRoomsMap.has(msgReceivedOnConvo_id)) {
-                        //Get Conversation data from db using msgReceivedOnConvo_id
-                        const fetchedConvo = await getConversationByConvoIdWithUser(msgReceivedOnConvo_id, isBuying);
-                        sellConvoRoomsMap.set(msgReceivedOnConvo_id, new ConversationRoom(fetchedConvo, []));
-                        sellConvoRoomsMap.get(msgReceivedOnConvo_id)?.msgs.push(new Message(msgObj.msg_id, msgObj.convo_id, msgObj.msg, msgObj.sender_uid, msgObj.recipient_uid, msgObj.createdAt));
+                    if (!sellConvoRoomsMap.has(convoIdOfMsgRecv)) {
+
+                        //create new conversation room with fetched conversation data and messages
+                        const newSellConvoRoom = new ConversationRoom(convoWithRecipient, []);
+                        //add newly received message to that buy convoroom;
+                        newSellConvoRoom.msgs.push(recvMessage);
+
+                        //when current user receives new messsage update last message in conversation tile
+                        newSellConvoRoom.convo.lastMsg = msgObj.msg;
+                        newSellConvoRoom.convo.lastMsg_uid = msgObj.sender_uid;
+
+                        //add new conversation to sell convo rooms map
+                        sellConvoRoomsMap.set(convoIdOfMsgRecv, newSellConvoRoom);
                         setSellConvoRoomsMap(new Map(sellConvoRoomsMap));
                     }
 
@@ -231,24 +276,33 @@ export default function Chat() {
             //replacing convo argument with newly created conversation for further use ,if newly created is null then keep old convo
             conversationRoom.convo = createdConvo ?? conversationRoom.convo;
 
+
             //set newly created conversation room to current conversation room in UI
-            setConversationRoom(conversationRoom);
-
             //add created conversation room to conversation rooms map (buy/sell depends on provided setState function)
-            setConversationRoomsMap((map: Map<String, ConversationRoom>) => {
-                map.set(conversationRoom.convo.convo_id, conversationRoom);
-                return new Map(map);
-            });
-
+            /* Both done after end of If statement as to update last msg on convo also*/
 
 
         }
-        // console.log("convo:", convo);
+        //when current user send messsage update last message in conversation tile
+        conversationRoom.convo.lastMsg = msg.msg;
+        conversationRoom.convo.lastMsg_uid = msg.sender_uid;
+
+
+        setConversationRoom(conversationRoom);
+
+
+        setConversationRoomsMap((map: Map<String, ConversationRoom>) => {
+            map.set(conversationRoom.convo.convo_id, conversationRoom);
+            return new Map(map);
+        });
+
 
         //Set msg convo details to above fetched convo details for db storing 
         msg.convo_id = conversationRoom.convo.convo_id;
         //console.log(msg.convo_id);
         try {
+
+            //publish message to websocket
             stompClient.current.publish({
                 destination: "/app/chat",
                 body: JSON.stringify(msg)
@@ -277,7 +331,7 @@ export default function Chat() {
         if (status != "loading" && session && session.user && session.user.uid) {
             msgQueue = `/user/${session.user.uid}/queue/messages`; //setting up current user's message queue url
             //Subscribe to current user's message queue          
-            subscribeToMyMessageQueue(msgQueue);
+            subscribeToMyMessageQueue(msgQueue, session.user.uid);
 
 
         }
@@ -296,6 +350,7 @@ export default function Chat() {
 
                 setBuyConvoRoomsMap(resBuy);
                 setSellConvoRoomsMap(resSell);
+                //console.log(sellConvoRoomsMap);
 
                 //if user is redirected from product detail page (type:sell) 
                 if (conversationRoomRef.current.convo.convo_id == "" && searchParams.get("type") == "sell") {
@@ -362,10 +417,10 @@ export default function Chat() {
     const submitMsg = () => {
         if (session && session.user && session.user.uid) {
             // console.log("curre convoRoom:", conversationRoom)
-            if (isBuying) //if current user is buying side of the product
-                sendMessage(isBuying, conversationRoom, setConversationRoom, buyConvoRoomsMap, setBuyConvoRoomsMap, new Message(crypto.randomUUID(), conversationRoom.convo.convo_id ?? "", msgInput, session.user.uid, conversationRoom.convo.seller_uid ?? "", Date.now().toString()));
-            else //if current user is selling side of the product
-                sendMessage(isBuying, conversationRoom, setConversationRoom, buyConvoRoomsMap, setSellConvoRoomsMap, new Message(crypto.randomUUID(), conversationRoom.convo.convo_id ?? "", msgInput, session.user.uid, conversationRoom.convo.buyer_uid ?? "", Date.now().toString()));
+            if (isBuying) //if current user is buying side of the product , then message recipient is a seller thus use convo.seller_uid
+                sendMessage(isBuying, conversationRoom, setConversationRoom, buyConvoRoomsMap, setBuyConvoRoomsMap, new Message(crypto.randomUUID(), conversationRoom.convo.convo_id ?? "", msgInput, session.user.uid, conversationRoom.convo.recipient_user.uid ?? "", Date.now().toString()));
+            else //if current user is selling side of the product, then message recipient is a buyer thus use convo.buyer_uid
+                sendMessage(isBuying, conversationRoom, setConversationRoom, buyConvoRoomsMap, setSellConvoRoomsMap, new Message(crypto.randomUUID(), conversationRoom.convo.convo_id ?? "", msgInput, session.user.uid, conversationRoom.convo.recipient_user.uid ?? "", Date.now().toString()));
 
             setMsgInput("");
 
@@ -406,8 +461,8 @@ export default function Chat() {
                         <ul>
 
                             {isBuying ? //display buying conversations of user if user toggled to his buying conversations else show selling conversation
-                                buyConvoRoomsMap != null ? [...Array.from(buyConvoRoomsMap).map((value: [convo_id: String, convoRoom: ConversationRoom], index, array) => <li key={value[1].convo.convo_id}><button onClick={() => setConversationRoom(value[1])}><ChatTile conv={value[1].convo} /></button></li>)] : [] :
-                                sellConvoRoomsMap != null ? [...Array.from(sellConvoRoomsMap).map((value: [convo_id: String, convoRoom: ConversationRoom], index, array) => <li key={value[1].convo.convo_id}><button onClick={() => setConversationRoom(value[1])}><ChatTile conv={value[1].convo} /></button></li>)] : []
+                                buyConvoRoomsMap != null ? [...Array.from(buyConvoRoomsMap).map((value: [convo_id: String, convoRoom: ConversationRoom], index, array) => <li key={value[1].convo.convo_id}><button onClick={() => { setConversationRoom(value[1]); }}><ConversationTile conv={value[1].convo} /></button></li>)] : [] :
+                                sellConvoRoomsMap != null ? [...Array.from(sellConvoRoomsMap).map((value: [convo_id: String, convoRoom: ConversationRoom], index, array) => <li key={value[1].convo.convo_id}><button onClick={() => setConversationRoom(value[1])}><ConversationTile conv={value[1].convo} /></button></li>)] : []
 
                             }
                         </ul>
@@ -434,7 +489,9 @@ export default function Chat() {
                 <div className="flex flex-col mt-5 mb-5 h-1/2">
                     <ul className="flex flex-col-reverse h-full overflow-y-scroll">
                         {
+
                             conversationRoom.msgs.map((msg) => {
+                                //console.log(msg, " ", session?.user?.uid);
                                 //render only those messages which are belonging to current conversation_id
                                 if (session && session.user && conversationRoom.convo.convo_id != "" && msg.convo_id == conversationRoom.convo.convo_id) //session exists and msg Convo belongs to current convo then render messages
                                     return (<li className="w-full" key={msg.createdAt}><MessageTile msg={msg} conv={conversationRoom.convo} user={session.user} /></li>);

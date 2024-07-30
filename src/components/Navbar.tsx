@@ -194,7 +194,9 @@ const afterLoginNavIcons = (session: Session, avatarDropDown: boolean, setAvatar
                         <li>
                             <a href="/editprofile" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Settings</a>
                         </li>
-
+                        <li>
+                            <a href="/my-listings" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">My Listings</a>
+                        </li>
                     </ul>
                     <div className="py-2 cursor-pointer">
                         <a onClick={() => { keyCloakSessionLogOut().then(() => { signOut({ callbackUrl: "/" }); }) }} className="block px-4 py-2  text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white">Sign out</a>

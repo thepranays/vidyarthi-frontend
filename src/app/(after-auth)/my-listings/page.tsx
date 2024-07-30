@@ -1,6 +1,6 @@
 'use client'
 import { Product } from "@/app/models/Product";
-import StoreProductCategory from "@/components/product/StoreProductCategory";
+import MyListingProductCategory from "@/components/product/MyListingProductCategory";
 import ProductComponent from "@/components/product/ProductComponent";
 import { PRODUCT_CATEGORY_LIST, PRODUCT_TYPE_REQUEST, PRODUCT_TYPE_SELL } from "@/constants/constants";
 
@@ -8,7 +8,7 @@ import { Suspense, useEffect, useState } from "react";
 
 //Fetch all products
 const getProductsList = async (setProductList: Function) => {
-    const req = await fetch("api/product/get/all", {
+    const req = await fetch("api/product/get/user-products", {
         method: "GET", headers: { "Content-Type": "application/json" },
         cache: "no-store" //dont 
     });
@@ -17,7 +17,7 @@ const getProductsList = async (setProductList: Function) => {
 }
 
 
-export default function Store(params: { categoryFilterList: string[] }) {
+export default function MyListings(params: { categoryFilterList: string[] }) {
 
 
     const [productList, setProductList] = useState([]);
@@ -37,9 +37,9 @@ export default function Store(params: { categoryFilterList: string[] }) {
     return <div className="flex">
 
         <div className="flex flex-col">
-            <h1 className="mb-5 text-3xl font-bold">Store</h1>
+            <h1 className="mb-5 text-3xl font-bold">My Listings</h1>
 
-            <StoreProductCategory setCategoryFilterList={setCategoryFilterList} categoryFilterList={categoryFilterList} />
+            <MyListingProductCategory setCategoryFilterList={setCategoryFilterList} categoryFilterList={categoryFilterList} />
         </div>
 
 

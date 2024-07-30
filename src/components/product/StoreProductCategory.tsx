@@ -1,7 +1,7 @@
 import { PRODUCT_CATEGORY_LIST, PRODUCT_TYPE_REQUEST, PRODUCT_TYPE_SELL } from "@/constants/constants";
 
 
-export default function ProductCategory(props: { setCategoryFilterList: Function, categoryFilterList: Set<String> }) {
+export default function StoreProductCategory(props: { setCategoryFilterList: Function, categoryFilterList: Set<String> }) {
 
     const handleCategoryFilterChange = (e: any, category: string) => {
         //e-> onChange event

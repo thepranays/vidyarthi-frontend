@@ -12,6 +12,7 @@ import { User } from "@/app/models/User";
 import { ConversationRoom } from "@/app/models/ConversationRoom";
 import ConversationModeToggle from "@/components/chat-room/ConversationModeToggle";
 import { PRODUCT_TYPE_SELL } from "@/constants/constants";
+import { Product } from "@/app/models/Product";
 
 //Get conversion using convo_id;
 const getConversationByConvoIdWithRecipient = async (convo_id: string, currUserUid: string) => {
